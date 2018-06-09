@@ -1,7 +1,29 @@
 
 module PegaLadrao(input [17:0] SW, input CLK_50,input [3:0] BT, output reg [17:0] LEDR, output reg [7:0] LEDG, output segA, segB, segC, segD, segE, segF, segG,segDP,
 				  input clk,output segA1, segB1, segC1, segD1, segE1, segF1, segG1, segDP1,segA2, segB2, segC2, segD2, segE2, segF2, segG2,segDP2,
-				  segA5, segB5, segC5, segD5, segE5, segF5, segG5, segDP5, segA6, segB6, segC6, segD6, segE6, segF6, segG6, segDP6, segA3, segB3, segC3, segD3, segE3, segF3, segG3, segDP3, segA4, segB4, segC4, segD4, segE4, segF4, segG4, segDP4 );
+				  segA5, segB5, segC5, segD5, segE5, segF5, segG5, segDP5, segA6, segB6, segC6, segD6, segE6, segF6, segG6, segDP6, segA3, segB3, segC3,
+				  segD3, segE3, segF3, segG3, segDP3, segA4, segB4, segC4, segD4, segE4, segF4, segG4, segDP4,
+				  output reg LEDVenceu);
+				 /* inout [35:0] GPIO_0,GPIO_1,    //    GPIO Connections
+				  output LCD_ON,        // LCD Power ON/OFF
+				  output LCD_BLON,      // LCD Back Light ON/OFF
+				  output LCD_RW,        // LCD Read/Write Select, 0 = Write, 1 = Read
+				  output LCD_EN,        // LCD Enable
+				  output LCD_RS,        // LCD Command/Data Select, 0 = Command, 1 = Data
+				  inout [7:0] LCD_DATA  // LCD Data bus 8 bits
+	);
+
+//    All inout port turn to tri-state
+assign    GPIO_0        =    36'hzzzzzzzzz;
+assign    GPIO_1        =    36'hzzzzzzzzz;
+
+// Reset delay gives some time for peripherals to initialize
+wire DLY_RST;
+
+// Turn LCD ON
+assign LCD_ON = 1'b1;
+assign LCD_BLON = 1'b1;
+*/		
 	reg [23:0] cnt,cnt1,cnt2;
 	reg [3:0] uniPoint = 4'h0, dezPoint = 4'h0;
 	reg [3:0] uniHit = 4'h0, dezHit = 4'h0;
@@ -24,10 +46,15 @@ module PegaLadrao(input [17:0] SW, input CLK_50,input [3:0] BT, output reg [17:0
 	integer hitD = 0;
 	integer i = 0; 
 	integer flag = 0;
+	integer acende = 0;
 	reg jaContou, mudou, venceu, zeraEssaMizera, acabouOTempo;
 	reg [3:0]level = 3'b0000;
 	
-	always @(posedge clk) begin 
+	always @(posedge clk) begin
+		if(acende == 1)begin
+			LEDVenceu = 1'b1;
+		end
+		else LEDVenceu = 1'b0;
 		if(cntovf) begin 
 			UNI <= (UNI==4'h0 ? 4'h9 : UNI-4'h1);
 		end
@@ -243,6 +270,7 @@ module PegaLadrao(input [17:0] SW, input CLK_50,input [3:0] BT, output reg [17:0
 			
 			LEDR = ladrao;
 			if(ladrao != 18'b000000000000000000 && ladrao == SW) begin
+				acende = 0;
 				LEDG = 8'b00000001;
 				if(jaContou == 1'b0)begin
 					hitU = hitU +  1;
@@ -272,42 +300,15 @@ module PegaLadrao(input [17:0] SW, input CLK_50,input [3:0] BT, output reg [17:0
 			if(zeraEssaMizera == 1'b1 || acabouOTempo == 1'b1)begin
 				dezHit = 1'h0;
 				uniHit = 1'h0;
-				if(zeraEssaMizera == 1'b1)
+				if(zeraEssaMizera == 1'b1)begin
 					venceu = 1'b1;
+					acende <= 1;
+				end
 				hitU = 0;
 				hitD = 0;
 			end
 
 		end
-		//-----------------------------------------
-		/*
-		if((UNI == 0 && DEZ == 0 && CEN == 0))begin
-			//level = 4'b0000;
-			//dezPoint = 4'h0;
-			//uniPoint = 4'h0;
-			ladrao = 18'b00000000000000000;
-			uniHit = 4'h0;
-			dezHit = 4'h0;
-		end
-
-		if(BT == 4'b1110 && level == 4'b0000) begin
-			uniHit = 4'h0;
-			dezHit = 4'h0;
-		end
-		if(BT == 4'b1101 && level == 4'b0000) begin
-			uniHit = 4'h0;
-			dezHit = 4'h0;
-		end
-		if(BT == 4'b1011 && level == 4'b0000) begin
-			uniHit = 4'h0;
-			dezHit = 4'h0;
-		end
-		if(BT == 4'b0111 && level == 4'b0000) begin
-			uniHit = 4'h0;
-			dezHit = 4'h0;
-		end
-		*/
-		//------------------------------------
 		
 	end
 

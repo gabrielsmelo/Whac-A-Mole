@@ -4,26 +4,7 @@ module PegaLadrao(input [17:0] SW, input CLK_50,input [3:0] BT, output reg [17:0
 				  segA5, segB5, segC5, segD5, segE5, segF5, segG5, segDP5, segA6, segB6, segC6, segD6, segE6, segF6, segG6, segDP6, segA3, segB3, segC3,
 				  segD3, segE3, segF3, segG3, segDP3, segA4, segB4, segC4, segD4, segE4, segF4, segG4, segDP4,
 				  output reg LEDVenceu);
-				 /* inout [35:0] GPIO_0,GPIO_1,    //    GPIO Connections
-				  output LCD_ON,        // LCD Power ON/OFF
-				  output LCD_BLON,      // LCD Back Light ON/OFF
-				  output LCD_RW,        // LCD Read/Write Select, 0 = Write, 1 = Read
-				  output LCD_EN,        // LCD Enable
-				  output LCD_RS,        // LCD Command/Data Select, 0 = Command, 1 = Data
-				  inout [7:0] LCD_DATA  // LCD Data bus 8 bits
-	);
-
-//    All inout port turn to tri-state
-assign    GPIO_0        =    36'hzzzzzzzzz;
-assign    GPIO_1        =    36'hzzzzzzzzz;
-
-// Reset delay gives some time for peripherals to initialize
-wire DLY_RST;
-
-// Turn LCD ON
-assign LCD_ON = 1'b1;
-assign LCD_BLON = 1'b1;
-*/		
+	//Contador usado no calculo do tempo
 	reg [23:0] cnt,cnt1,cnt2;
 	reg [3:0] uniPoint = 4'h0, dezPoint = 4'h0;
 	reg [3:0] uniHit = 4'h0, dezHit = 4'h0;
@@ -36,44 +17,63 @@ assign LCD_BLON = 1'b1;
 	wire cntovf = &cnt;
 	wire cntovf1 = &cnt1;
 	wire cntovf2 = &cnt2;
-	// UNI is a counter that counts from 0 to 9
+
+	//Variaveis Utilizadas para o controle de tempo
 	reg [3:0] UNI;
 	reg [3:0] DEZ;
 	reg [3:0] CEN = 3;
+
+	//Vector que guarda a posição dos ladrões
 	reg [17:0] ladrao = 0;
+
+	//Array utilizado na geração do número aleatório
 	reg [17:0] array;
+	
+	//Contadores usados na contagem dos pontos, dezena e unidade
 	integer hitU = 0;
 	integer hitD = 0;
 	integer i = 0; 
-	integer flag = 0;
+
+	//Flag usado no status do led verd
 	integer acende = 0;
-	reg jaContou, mudou, venceu, zeraEssaMizera, acabouOTempo;
-	reg [3:0]level = 3'b0000;
+
+	//flags utilizadas pra marcar se jacontou ponto, se houve mudança nos pontos, se o jogador venceu, se é para zera e se o tempo acabou.
+	reg jaContou, mudou, venceu, zerar, acabouOTempo;
 	
+	//Vecotr que guarda o level atual.
+	reg [3:0]level = 3'b0000;
+
+
+	//Always que controla o tempo (UNI, DEZ e CEN), controla também a mundança de minutos para segundos,
+	//o final do jogo e o reset do jogo.
 	always @(posedge clk) begin
-		if(acende == 1)begin
+		//acendendo o LED verde quando ganha ponto
+		if(acende == 1)begin 
 			LEDVenceu = 1'b1;
 		end
+		//mantendo o LED apagado quando nao ganha ponto
 		else LEDVenceu = 1'b0;
+		
+		//tempo do jogo
 		if(cntovf) begin 
 			UNI <= (UNI==4'h0 ? 4'h9 : UNI-4'h1);
 		end
-		if(UNI == 0)
+		if(UNI == 0) //o digito das dezenas so descresce quando o das unidade chega a 0
 			if(cntovf1) begin 
 				DEZ <= (DEZ==4'h0 ? 4'h5 : DEZ-4'h1);
 			end
-		if(DEZ == 0 && UNI == 0)
+		if(DEZ == 0 && UNI == 0)// "CEN" remete a casa dos minutos
 			if(cntovf2) begin
 				CEN <= CEN - 1;
 			end
 		
-		zeraEssaMizera = 1'b0;
+		zerar = 1'b0;
 		if(uniHit == uniPoint && dezHit == dezPoint)
-			zeraEssaMizera = 1'b1;
+			zerar = 1'b1;
 			
 		if(UNI==1 && DEZ == 0 && CEN == 0)
 			acabouOTempo = 1'b1;
-			
+		//condicao de parada do jogo, voltando ao estado de espera	
 		if((UNI == 0 && DEZ == 0 && CEN == 0) || level == 4'b0000 || venceu == 1'b1)begin
 			UNI <= 1;
 			DEZ <= 0;
@@ -82,34 +82,42 @@ assign LCD_BLON = 1'b1;
 			dezPoint = 4'h0;
 			uniPoint = 4'h0;
 		end
-		if(level == 4'b0000 && ~BT) begin      // RESET DO JOGO
+		if(level == 4'b0000 && ~BT) begin // RESET DO JOGO
 			CEN <= 3;
 			UNI <= 0;
 			DEZ <= 0;
 			acabouOTempo = 1'b0;
 		end
+		//level 1
 		if(BT == 4'b1110 && level == 4'b0000) begin
 			level = 4'b0001;
 			dezPoint = 4'h1;
 			uniPoint = 4'h0;
 		end
+		//level 2
 		if(BT == 4'b1101 && level == 4'b0000) begin
 			level = 4'b0010;
 			dezPoint = 4'h1;
 			uniPoint = 4'h5;
 		end
+		//level 3
 		if(BT == 4'b1011 && level == 4'b0000) begin
 			level = 4'b0011;
 			dezPoint = 4'h2;
 			uniPoint = 4'h0;
 		end
+		//level 4
 		if(BT == 4'b0111 && level == 4'b0000) begin
 			level = 4'b0100;
 			dezPoint = 4'h3;
 			uniPoint = 4'h0;
 		end
 	end
+
+
+	////////////////// Controle Do Displays de sete segmentos //////////////////
 	reg [7:0] SevenSeg;
+	//display de 7 segmentos
 	always @(*)
 	case(UNI)
 		4'h0: SevenSeg = 8'b11111100;
@@ -128,6 +136,7 @@ assign LCD_BLON = 1'b1;
 	assign {segA, segB, segC, segD, segE, segF, segG,segDP} = ~SevenSeg;
 	
 	reg [7:0] SevenSeg1;
+	//display de 7 segmentos de novo
 	always @(*)
 	case(DEZ)
 		4'h0: SevenSeg1 = 8'b11111100;
@@ -235,7 +244,13 @@ assign LCD_BLON = 1'b1;
 	endcase
 	
 	assign {segA4, segB4, segC4, segD4, segE4, segF4, segG4, segDP4} = ~SevenSegDezH;
-	
+
+
+	//////////////////                                         //////////////////
+
+
+
+	//Gerador de numeros aleatorios e controle e detecção dos pontos
 	integer number = 0;
 	integer countTime = 0;
 	always@(posedge UNI) begin 
@@ -267,11 +282,12 @@ assign LCD_BLON = 1'b1;
 					mudou = 1'b1;
 				end
 			end
-			
 			LEDR = ladrao;
+			//marcando pontos
 			if(ladrao != 18'b000000000000000000 && ladrao == SW) begin
 				acende = 0;
 				LEDG = 8'b00000001;
+				//para nao contar mais de uma vez na mesma rodada
 				if(jaContou == 1'b0)begin
 					hitU = hitU +  1;
 					jaContou = 1'b1;
@@ -286,6 +302,7 @@ assign LCD_BLON = 1'b1;
 				dezHit = hitD;
 				
 			end	else LEDG = 8'b00000000;
+			//para nao contar mais de uma vez na mesma rodada
 			if(mudou == 1'b1)begin
 					jaContou = 1'b0;
 			end
@@ -297,10 +314,11 @@ assign LCD_BLON = 1'b1;
 				mudou = 1'b0;				
 				countTime = 0;
 			end
-			if(zeraEssaMizera == 1'b1 || acabouOTempo == 1'b1)begin
+			//encerrando o jogo, e zerando os placares
+			if(zerar == 1'b1 || acabouOTempo == 1'b1)begin
 				dezHit = 1'h0;
 				uniHit = 1'h0;
-				if(zeraEssaMizera == 1'b1)begin
+				if(zerar == 1'b1)begin
 					venceu = 1'b1;
 					acende <= 1;
 				end
